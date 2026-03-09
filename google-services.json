@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "105698041768",
+    "project_id": "newsap-c16ac",
+    "storage_bucket": "newsap-c16ac.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:105698041768:android:0de4ad198a20eaa135479d",
+        "android_client_info": {
+          "package_name": "com.a7aa.newsap"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "105698041768-hu2vu2h0omcrdhcopjhvs1u5h8qdrul2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgPu4eGrD2da5_1BcPUjjNv7Xy9Um6tZc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "105698041768-hu2vu2h0omcrdhcopjhvs1u5h8qdrul2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

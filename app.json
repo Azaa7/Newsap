@@ -16,14 +16,33 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.a7aa.newsap",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "useNextNotificationsApi": true
+    },
+    "notification": {
+      "icon": "./assets/notificon.png",
+      "color": "#1a73e8"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e8bc92ef-79b8-4b60-85ad-455f9bced77d"
+      }
+    },
+    "plugins": [
+      "@react-native-google-signin/google-signin"
+    ],
+    "owner": "a7aa",
+    "plugins": [
+      "@react-native-google-signin/google-signin"
+    ]
   }
 }
