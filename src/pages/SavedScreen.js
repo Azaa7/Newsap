@@ -3,16 +3,16 @@ import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-n
 import { Header, NewsFeed } from '../components';
 import { articleService } from '../services';
 import { colors, spacing, typography } from '../theme/tokens';
+import { t } from '../i18n/strings';
 
-export const SavedScreen = ({ user, onOpenArticle }) => {
+export const SavedScreen = ({ user, language = 'mn', onBackPress, onOpenArticle }) => {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const loadSaved = async () => {
     setLoading(true);
     const list = await articleService.getSavedArticles(user?.id);
-    const withSaved = await articleService.enrichWithSaved(user?.id, list);
-    setArticles(withSaved);
+    setArticles(list);
     setLoading(false);
   };
 
@@ -21,13 +21,18 @@ export const SavedScreen = ({ user, onOpenArticle }) => {
   }, []);
 
   const handleSave = async (articleId) => {
-    await articleService.toggleSaveArticle(user?.id, articleId);
+    const articleObj = articles.find((a) => a.id === articleId);
+    await articleService.toggleSaveArticle(user?.id, articleId, articleObj);
     await loadSaved();
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header title="Saved" subtitle="Your bookmarked articles" />
+      <Header
+        title={t(language, 'saved_news')}
+        subtitle={language === 'en' ? 'Your bookmarked articles' : 'Таны хадгалсан нийтлэлүүд'}
+        onBackPress={onBackPress}
+      />
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator color={colors.primary} size="large" />
@@ -37,7 +42,11 @@ export const SavedScreen = ({ user, onOpenArticle }) => {
           articles={articles}
           onArticlePress={onOpenArticle}
           onSaveArticle={handleSave}
-          ListEmptyComponent={<Text style={styles.emptyText}>No saved articles yet.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              {language === 'en' ? 'No saved articles yet.' : 'Одоогоор хадгалсан мэдээ алга байна.'}
+            </Text>
+          }
         />
       )}
     </SafeAreaView>

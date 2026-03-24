@@ -185,12 +185,15 @@ async function sendLocalNotification({ title, body, data = {}, channelId = 'defa
 }
 
 // ─── Шинэ мэдээ импортлогдсон notification ──────────────────────────────
-async function notifyNewArticles(count) {
+async function notifyNewArticles(count, firstTitle = null) {
   console.log('[NOTIF] notifyNewArticles called, count:', count);
   if (!count || count <= 0) return;
 
   const title = 'NEWSAP — Шинэ мэдээ';
-  const body = `${count} шинэ мэдээ нэмэгдлээ. Одоо уншаарай!`;
+  const body =
+    count === 1 && firstTitle
+      ? firstTitle
+      : `${count} шинэ мэдээ нэмэгдлээ. Одоо уншаарай!`;
 
   const result = await sendLocalNotification({
     title,
@@ -218,7 +221,7 @@ async function scheduleDailyReminder(enabled = true) {
     await Notifications.scheduleNotificationAsync({
       content: {
         title: 'NEWSAP',
-        body: 'Өнөөдрийн мэдээг уншсан уу? 📰',
+        body: 'Өнөөдрийн мэдээг уншсан уу?',
         data: { type: 'daily_reminder' },
         sound: 'default',
       },
@@ -235,7 +238,7 @@ async function scheduleDailyReminder(enabled = true) {
       await Notifications.scheduleNotificationAsync({
         content: {
           title: 'NEWSAP',
-          body: 'Өнөөдрийн мэдээг уншсан уу? 📰',
+          body: 'Өнөөдрийн мэдээг уншсан уу?',
           data: { type: 'daily_reminder' },
           sound: 'default',
         },

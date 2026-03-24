@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Header, SearchBar, CategoryFilter, NewsFeed } from '../components';
 import { articleService, analyticsService } from '../services';
+import { realtimeService } from '../services/realtimeService';
 import { colors, spacing, typography } from '../theme/tokens';
 import { t, translateCategory } from '../i18n/strings';
 
@@ -38,6 +39,7 @@ export const HomeScreen = ({ user, language = 'mn', onOpenArticle, onProfilePres
   const [error, setError] = useState('');
   const searchTimerRef = useRef(null);
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [realtimeArticles, setRealtimeArticles] = useState(null);
 
   const categories = articleService.categories;
   const translatedCategories = categories.map((category) => ({
@@ -50,6 +52,14 @@ export const HomeScreen = ({ user, language = 'mn', onOpenArticle, onProfilePres
     setSearchText(text);
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(() => setDebouncedSearch(text), 400);
+  }, []);
+
+  // Realtime listener — Firestore onSnapshot-аас ирсэн мэдээг автоматаар авах
+  useEffect(() => {
+    const unsub = realtimeService.onArticlesChanged((latestArticles) => {
+      setRealtimeArticles(latestArticles);
+    });
+    return unsub;
   }, []);
 
   const loadArticles = async ({ isRefresh = false } = {}) => {
@@ -65,6 +75,9 @@ export const HomeScreen = ({ user, language = 'mn', onOpenArticle, onProfilePres
         sourceArticles = await articleService.getRecommendedArticles(user);
       } else if (feedMode === 'world') {
         sourceArticles = await articleService.getFeed({ categoryId: 6, limit: 50 });
+      } else if (realtimeArticles && selectedCategory === 0 && !debouncedSearch) {
+        // Realtime listener-аас ирсэн мэдээг шууд ашиглах (Firestore query хэмнэнэ)
+        sourceArticles = realtimeArticles;
       } else {
         sourceArticles = await articleService.getFeed({
           categoryId: selectedCategory,
@@ -80,15 +93,18 @@ export const HomeScreen = ({ user, language = 'mn', onOpenArticle, onProfilePres
               return matchesCategory && matchesQuery(article, debouncedSearch);
             });
 
-      const withSaved = await articleService.enrichWithSaved(user?.id, filteredArticles);
-      setArticles(withSaved);
+      const withInteractions = await articleService.enrichWithInteractions(user?.id, filteredArticles);
+      setArticles(withInteractions);
 
-      analyticsService.track('feed_loaded', {
-        mode: feedMode,
-        categoryId: selectedCategory,
-        searchText: debouncedSearch,
-        count: withSaved.length,
-      });
+      try {
+        analyticsService.track('feed_loaded', {
+          mode: feedMode,
+          categoryId: selectedCategory,
+          searchText: debouncedSearch,
+          count: withInteractions.length,
+        });
+      } catch {
+      }
     } catch (loadError) {
       setError('Unable to load articles. Pull to refresh and try again.');
     } finally {
@@ -101,31 +117,43 @@ export const HomeScreen = ({ user, language = 'mn', onOpenArticle, onProfilePres
     loadArticles();
   }, [feedMode, selectedCategory, debouncedSearch]);
 
+  // Realtime мэдээ ирэхэд feedMode === 'all' бөгөөд category/search filter байхгүй бол автомат шинэчлэх
+  useEffect(() => {
+    if (!realtimeArticles || loading) return;
+    if (feedMode === 'all' && selectedCategory === 0 && !debouncedSearch) {
+      loadArticles();
+    }
+  }, [realtimeArticles]);
+
   const handleRefresh = () => {
     setRefreshing(true);
     loadArticles({ isRefresh: true });
   };
 
   const handleOpenArticle = (article) => {
+    const mergedArticle = articleService.applyLocalInteractionOverride(article);
+
     // Background-д уншсан гэж тэмдэглэх (navigate-г хүлээхгүй)
-    articleService.markArticleRead(user?.id, article).catch(() => {});
-    onOpenArticle?.(article);
+    articleService.markArticleRead(user?.id, mergedArticle).catch(() => {});
+    onOpenArticle?.(mergedArticle);
   };
 
   const handleSave = useCallback(async (articleId) => {
+    const articleObj = articles.find((a) => a.id === articleId);
+
     // Optimistic update — UI шууд шинэчлэх
     setArticles((prev) =>
       prev.map((a) => (a.id === articleId ? { ...a, isSaved: !a.isSaved } : a))
     );
 
     // Background-д Firestore руу хадгалах
-    articleService.toggleSaveArticle(user?.id, articleId).catch(() => {
+    articleService.toggleSaveArticle(user?.id, articleId, articleObj).catch(() => {
       // Revert on failure
       setArticles((prev) =>
         prev.map((a) => (a.id === articleId ? { ...a, isSaved: !a.isSaved } : a))
       );
     });
-  }, [user?.id]);
+  }, [user?.id, articles]);
 
   const ListEmpty = () => (
     <View style={styles.stateContainer}>
@@ -163,6 +191,8 @@ export const HomeScreen = ({ user, language = 'mn', onOpenArticle, onProfilePres
         <NewsFeed
           articles={[]}
           language={language}
+          cardVariant="titleOnly"
+          showRelativeTodayTime
           onArticlePress={handleOpenArticle}
           onSaveArticle={handleSave}
           ListHeaderComponent={<ListError />}
@@ -172,6 +202,8 @@ export const HomeScreen = ({ user, language = 'mn', onOpenArticle, onProfilePres
         <NewsFeed
           articles={articles}
           language={language}
+          cardVariant="titleOnly"
+          showRelativeTodayTime
           onArticlePress={handleOpenArticle}
           onSaveArticle={handleSave}
           ListEmptyComponent={<ListEmpty />}

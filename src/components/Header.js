@@ -1,5 +1,5 @@
 import React from 'react';
-import { StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, radius, shadows, spacing, typography } from '../theme/tokens';
 import { t } from '../i18n/strings';
 
@@ -10,17 +10,23 @@ export const Header = ({ title = 'NEWSAP', subtitle, onProfilePress, onBackPress
     <View style={[styles.container, { paddingTop: topInset + spacing.sm }]}> 
       {onBackPress ? (
         <TouchableOpacity style={styles.backButton} onPress={onBackPress} activeOpacity={0.7}>
-          <Text style={styles.backArrow}>←</Text>
+          <View style={styles.backChevron} />
         </TouchableOpacity>
       ) : null}
 
       <View style={styles.leftWrap}>
         {onTitlePress ? (
           <TouchableOpacity onPress={onTitlePress} style={styles.titleButton} accessibilityRole="button">
-            <Text style={styles.title}>{title}</Text>
+            <View style={styles.titleRow}>
+              <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+              <Text style={styles.title}>{title}</Text>
+            </View>
           </TouchableOpacity>
         ) : (
-          <Text style={styles.title}>{title}</Text>
+          <View style={styles.titleRow}>
+            <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.title}>{title}</Text>
+          </View>
         )}
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
@@ -49,6 +55,16 @@ const styles = StyleSheet.create({
   titleButton: {
     alignSelf: 'flex-start',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  logo: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+  },
   backButton: {
     width: 40,
     height: 40,
@@ -58,10 +74,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: spacing.md,
   },
-  backArrow: {
-    fontSize: 20,
-    color: colors.textPrimary,
-    fontWeight: '700',
+  backChevron: {
+    width: 12,
+    height: 12,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: colors.textPrimary,
+    transform: [{ rotate: '45deg' }, { translateX: 1 }],
   },
   title: {
     ...typography.h2,

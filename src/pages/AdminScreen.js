@@ -37,6 +37,7 @@ export const AdminScreen = ({ user, language = 'mn', onBackPress }) => {
   const [importCategory, setImportCategory] = useState('general');
   const [importCount, setImportCount] = useState('5');
   const [customRssUrl, setCustomRssUrl] = useState('');
+  const [recategorizing, setRecategorizing] = useState(false);
 
   const isEditing = useMemo(() => Boolean(editingId), [editingId]);
 
@@ -202,6 +203,29 @@ export const AdminScreen = ({ user, language = 'mn', onBackPress }) => {
     }
   };
 
+  const handleReCategorizeAll = async () => {
+    setRecategorizing(true);
+    try {
+      const result = await newsApiService.reCategorizeAll();
+      await loadArticles();
+
+      const summaryText = Object.entries(result.summary || {})
+        .map(([name, count]) => `${name}: ${count}`)
+        .join('\n');
+
+      Alert.alert(
+        t(language, 'recategorize_done'),
+        `${result.updated} ${t(language, 'recategorize_updated')}\n\n` +
+          `Total: ${result.total}\nSkipped: ${result.skipped}` +
+          (summaryText ? `\n\n${summaryText}` : '')
+      );
+    } catch (error) {
+      Alert.alert(t(language, 'import_error'), error?.message || 'Re-categorize failed');
+    } finally {
+      setRecategorizing(false);
+    }
+  };
+
   const renderImportModal = () => (
     <Modal
       visible={importModalVisible}
@@ -348,6 +372,16 @@ export const AdminScreen = ({ user, language = 'mn', onBackPress }) => {
               onPress={() => setImportModalVisible(true)}
             >
               <Text style={styles.importTriggerText}>{t(language, 'import_news')} +</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.importTriggerBtn, styles.recategorizeBtn]}
+              onPress={handleReCategorizeAll}
+              disabled={recategorizing}
+            >
+              <Text style={styles.importTriggerText}>
+                {recategorizing ? t(language, 'recategorizing') : t(language, 'recategorize')}
+              </Text>
             </TouchableOpacity>
 
             <View style={styles.formCard}>
@@ -507,10 +541,10 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.primary,
     paddingHorizontal: spacing.md,
   },
   articleRow: {
@@ -539,31 +573,31 @@ const styles = StyleSheet.create({
     minHeight: 32,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.primary,
     paddingHorizontal: spacing.sm,
   },
   secondaryBtnText: {
     ...typography.bodySmall,
-    color: colors.textPrimary,
+    color: '#ffffff',
     fontWeight: '600',
   },
   dangerBtnInline: {
     minHeight: 32,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.danger,
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: colors.primary,
     paddingHorizontal: spacing.sm,
   },
   dangerBtnText: {
     ...typography.bodySmall,
-    color: colors.danger,
-    fontWeight: '700',
+    color: '#ffffff',
+    fontWeight: '600',
   },
   emptyWrap: {
     alignItems: 'center',
@@ -579,8 +613,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.success || '#22c55e',
+    backgroundColor: colors.primary,
     marginBottom: spacing.md,
+  },
+  recategorizeBtn: {
+    backgroundColor: colors.primary,
   },
   importTriggerText: {
     ...typography.bodySmall,
@@ -631,7 +668,7 @@ const styles = StyleSheet.create({
   },
   importBtnText: {
     ...typography.bodySmall,
-    color: colors.textPrimary,
+    color: '#ffffff',
     fontWeight: '700',
   },
   importingWrap: {
@@ -647,7 +684,7 @@ const styles = StyleSheet.create({
     maxHeight: 420,
   },
   importAllBtn: {
-    backgroundColor: colors.success || '#22c55e',
+    backgroundColor: colors.primary,
     marginBottom: spacing.md,
   },
   feedGroup: {

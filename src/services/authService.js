@@ -11,10 +11,16 @@ import { validateAuthForm } from '../utils/validators';
 
 // Google Sign-In — native module тул lazy import (build хийхгүйгээр crash хийхгүй)
 let GoogleSignin = null;
+const GOOGLE_WEB_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+  '105698041768-hu2vu2h0omcrdhcopjhvs1u5h8qdrul2.apps.googleusercontent.com';
+
 try {
   GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
   GoogleSignin.configure({
-    webClientId: '105698041768-hu2vu2h0omcrdhcopjhvs1u5h8qdrul2.apps.googleusercontent.com',
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    scopes: ['profile', 'email'],
+    offlineAccess: true,
   });
 } catch {
   console.warn('[AUTH] Google Sign-In native module not available — need new build');
@@ -31,6 +37,7 @@ const toSession = (authUser, profile = {}) => ({
     id: authUser.uid,
     email: authUser.email,
     name: profile.name || authUser.displayName || 'User',
+    profileImage: profile.profileImage || authUser.photoURL || null,
     interests: profile.interests || [],
     language: profile.language || 'mn',
     role: profile.isAdmin ? 'admin' : 'user',
@@ -47,6 +54,7 @@ const syncUserProfile = async (authUser, profile = {}) => {
   const nextProfile = {
     name: profile.name || authUser.displayName || 'User',
     email,
+    profileImage: profile.profileImage || authUser.photoURL || null,
     interests: profile.interests || [],
     language: profile.language || 'mn',
     isAdmin: isAdminEmail(email),
@@ -127,7 +135,7 @@ export const authService = {
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const signInResult = await GoogleSignin.signIn();
-      const idToken = signInResult?.data?.idToken;
+      const idToken = signInResult?.idToken || signInResult?.data?.idToken;
 
       if (!idToken) {
         throw new Error('Google Sign-In: idToken олдсонгүй');
@@ -148,7 +156,22 @@ export const authService = {
       return toSession(authUser, profile);
     } catch (err) {
       console.error('[AUTH] Google Sign-In error:', err);
-      throw new Error(err?.message || 'Google нэвтрэх амжилтгүй боллоо.');
+
+      const rawMessage = String(err?.message || '');
+      const isDeveloperError = rawMessage.includes('DEVELOPER_ERROR') || err?.code === 10;
+
+      if (isDeveloperError) {
+        throw new Error(
+          'Google Sign-In тохиргооны алдаа (DEVELOPER_ERROR). Ихэнхдээ Firebase/Google дээр Android-ийн SHA-1 fingerprint бүртгэгдээгүй эсвэл packageName зөрсөн үед гардаг.\n\n' +
+            'Шийдэл (Android):\n' +
+            '1) Firebase Console → Project settings → Your apps → Android (com.a7aa.newsap) дээр SHA-1 нэмнэ.\n' +
+            '2) Шинэ google-services.json татаж төсөлдөө солих (expo.android.googleServicesFile).\n' +
+            '3) `eas build --platform android --profile development` дахин build хийгээд суулгана.\n\n' +
+            'SHA-1 авах (EAS build ашиглаж байгаа бол): `eas credentials -p android` (эсвэл Expo dashboard дээрх Android credentials)'
+        );
+      }
+
+      throw new Error(rawMessage || 'Google нэвтрэх амжилтгүй боллоо.');
     }
   },
 };

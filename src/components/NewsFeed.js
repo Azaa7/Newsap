@@ -8,6 +8,8 @@ export const NewsFeed = ({
   onArticlePress,
   onSaveArticle,
   language = 'mn',
+  cardVariant = 'default',
+  showRelativeTodayTime = false,
   ListEmptyComponent = null,
   ListHeaderComponent = null,
   refreshControl,
@@ -19,9 +21,10 @@ export const NewsFeed = ({
       renderItem={({ item }) => (
         <ArticleCard
           article={item}
+          variant={cardVariant}
           language={language}
+          showRelativeTodayTime={showRelativeTodayTime}
           onPress={() => onArticlePress?.(item)}
-          onSavePress={() => onSaveArticle?.(item.id)}
         />
       )}
       refreshControl={refreshControl}

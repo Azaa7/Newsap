@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 import { t } from '../i18n/strings';
 
@@ -11,11 +11,17 @@ export const ProfileCard = ({ user, onEditPress, language = 'mn' }) => {
     .slice(0, 2)
     .toUpperCase();
 
+  const avatarUri = user?.profileImage || user?.photoURL || null;
+
   return (
     <View style={styles.container}>
       <View style={styles.identityRow}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.avatarImage} resizeMode="cover" />
+          ) : (
+            <Text style={styles.avatarText}>{initials}</Text>
+          )}
         </View>
         <View style={styles.identityTextWrap}>
           <Text style={styles.name}>{user?.name || t(language, 'user')}</Text>
@@ -54,6 +60,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     ...typography.body,

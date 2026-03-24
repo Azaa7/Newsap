@@ -26,7 +26,8 @@ export const ExploreScreen = ({ user, onOpenArticle }) => {
   }, [selectedCategory, searchText]);
 
   const handleSave = async (articleId) => {
-    await articleService.toggleSaveArticle(user?.id, articleId);
+    const articleObj = articles.find((a) => a.id === articleId);
+    await articleService.toggleSaveArticle(user?.id, articleId, articleObj);
     await load();
   };
 

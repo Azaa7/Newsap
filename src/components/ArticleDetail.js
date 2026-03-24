@@ -1,11 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   Dimensions,
   Image,
   ScrollView,
-  Share,
   StatusBar,
   StyleSheet,
   Text,
@@ -16,7 +14,7 @@ import { colors, radius, spacing, typography } from '../theme/tokens';
 import { t } from '../i18n/strings';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const HERO_HEIGHT = 320;
+const HERO_HEIGHT = 360;
 
 const resolveImageSource = (image) => {
   if (!image) return null;
@@ -26,14 +24,6 @@ const resolveImageSource = (image) => {
     return uri ? { uri } : null;
   }
   return null;
-};
-
-// ─── Reading time estimate ───────────────────────────────────────────────
-const estimateReadTime = (text) => {
-  if (!text) return '1 мин';
-  const words = text.trim().split(/\s+/).length;
-  const mins = Math.max(1, Math.ceil(words / 200));
-  return `${mins} мин`;
 };
 
 // ─── Format date nicely ─────────────────────────────────────────────────
@@ -89,13 +79,49 @@ const IconBtn = ({ icon, label, active, onPress, variant = 'default' }) => (
   </TouchableOpacity>
 );
 
-export const ArticleDetail = ({ article, onClose, onSave, onShare, language = 'mn' }) => {
+const RecommendedCard = ({ item, onPress }) => {
+  const imageSource = resolveImageSource(item?.image);
+
+  return (
+    <TouchableOpacity style={styles.recommendedCard} onPress={onPress} activeOpacity={0.85}>
+      {imageSource ? (
+        <Image source={imageSource} style={styles.recommendedImage} resizeMode="cover" resizeMethod="resize" />
+      ) : (
+        <View style={styles.recommendedPlaceholder}>
+          <Text style={styles.recommendedPlaceholderIcon}>📰</Text>
+        </View>
+      )}
+      <View style={styles.recommendedMetaRow}>
+        <Text style={styles.recommendedCategory} numberOfLines={1}>{item?.category || 'General'}</Text>
+        <Text style={styles.recommendedDate} numberOfLines={1}>{formatDate(item?.publishedDate)}</Text>
+      </View>
+      <Text style={styles.recommendedTitle} numberOfLines={2}>{item?.title || ''}</Text>
+    </TouchableOpacity>
+  );
+};
+
+export const ArticleDetail = ({
+  article,
+  onClose,
+  onSave,
+  onLike,
+  language = 'mn',
+  recommendedArticles = [],
+  onOpenRecommended,
+}) => {
   const [isSaved, setIsSaved] = useState(Boolean(article?.isSaved));
+  const [isLiked, setIsLiked] = useState(Boolean(article?.isLiked));
   const scrollY = useRef(new Animated.Value(0)).current;
   const imageSource = resolveImageSource(article?.image);
   const topInset = StatusBar.currentHeight || 0;
-  const readTime = estimateReadTime(article?.content);
   const niceDate = formatDate(article?.publishedDate);
+  const likeCount = Math.max(0, Number(article?.likesCount) || 0);
+  const likeCountLabel = `${likeCount} ${t(language, 'likes')}`;
+
+  useEffect(() => {
+    setIsSaved(Boolean(article?.isSaved));
+    setIsLiked(Boolean(article?.isLiked));
+  }, [article?.id, article?.isSaved, article?.isLiked]);
 
   const handleSave = () => {
     const next = !isSaved;
@@ -103,12 +129,10 @@ export const ArticleDetail = ({ article, onClose, onSave, onShare, language = 'm
     onSave?.(article.id, next);
   };
 
-  const handleShare = async () => {
-    await Share.share({
-      message: `${article.title}\n\n${article.url || article.content?.slice(0, 200)}`,
-      title: article.title,
-    });
-    onShare?.(article.id);
+  const handleLike = () => {
+    const next = !isLiked;
+    setIsLiked(next);
+    onLike?.(article.id, next);
   };
 
   // Parallax header opacity
@@ -137,12 +161,12 @@ export const ArticleDetail = ({ article, onClose, onSave, onShare, language = 'm
       {/* ── Floating header ── */}
       <Animated.View style={[styles.floatingHeader, { paddingTop: topInset + spacing.sm, backgroundColor: headerBg }]}>
         <TouchableOpacity onPress={onClose} style={styles.backBtn} activeOpacity={0.7}>
-          <Text style={styles.backIcon}>←</Text>
+          <View style={styles.backChevron} />
         </TouchableOpacity>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleShare} style={styles.headerIconBtn} activeOpacity={0.7}>
-            <Text style={styles.headerIcon}>↗</Text>
+          <TouchableOpacity onPress={handleLike} style={styles.headerIconBtn} activeOpacity={0.7}>
+            <Text style={styles.headerIcon}>{isLiked ? '♥' : '♡'}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleSave} style={styles.headerIconBtn} activeOpacity={0.7}>
             <Text style={styles.headerIcon}>{isSaved ? '★' : '☆'}</Text>
@@ -161,7 +185,7 @@ export const ArticleDetail = ({ article, onClose, onSave, onShare, language = 'm
         {/* Hero image */}
         {imageSource ? (
           <Animated.View style={{ opacity: heroOpacity }}>
-            <Image source={imageSource} style={styles.heroImage} resizeMode="cover" />
+            <Image source={imageSource} style={styles.heroImage} resizeMode="cover" resizeMethod="resize" />
             <View style={styles.heroOverlay} />
           </Animated.View>
         ) : (
@@ -177,7 +201,9 @@ export const ArticleDetail = ({ article, onClose, onSave, onShare, language = 'm
             <View style={styles.categoryBadge}>
               <Text style={styles.categoryText}>{article.category}</Text>
             </View>
-            <Text style={styles.readTime}>📖 {readTime}</Text>
+            <View style={styles.metaStack}>
+              <Text style={styles.likeCount}>♥ {likeCountLabel}</Text>
+            </View>
           </View>
 
           {/* Title */}
@@ -226,6 +252,26 @@ export const ArticleDetail = ({ article, onClose, onSave, onShare, language = 'm
               </Text>
             </View>
           ) : null}
+
+          {recommendedArticles.length > 0 ? (
+            <View style={styles.recommendedSection}>
+              <Text style={styles.recommendedHeading}>{t(language, 'nav_recommended')}</Text>
+              <ScrollView
+                horizontal
+                nestedScrollEnabled
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.recommendedList}
+              >
+                {recommendedArticles.map((item) => (
+                  <RecommendedCard
+                    key={String(item.id)}
+                    item={item}
+                    onPress={() => onOpenRecommended?.(item)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
         </View>
 
         {/* Bottom spacer */}
@@ -234,7 +280,12 @@ export const ArticleDetail = ({ article, onClose, onSave, onShare, language = 'm
 
       {/* ── Bottom action bar ── */}
       <View style={[styles.bottomBar, { paddingBottom: spacing.md }]}>
-        <IconBtn icon="↗" label={t(language, 'share')} onPress={handleShare} />
+        <IconBtn
+          icon={isLiked ? '♥' : '♡'}
+          label={isLiked ? t(language, 'liked') : t(language, 'like')}
+          active={isLiked}
+          onPress={handleLike}
+        />
         <IconBtn
           icon={isSaved ? '★' : '☆'}
           label={isSaved ? t(language, 'saved') : t(language, 'save')}
@@ -274,10 +325,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backIcon: {
-    fontSize: 20,
-    color: '#fff',
-    fontWeight: '700',
+  backChevron: {
+    width: 12,
+    height: 12,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: '#fff',
+    transform: [{ rotate: '45deg' }, { translateX: 1 }],
   },
   headerActions: {
     flexDirection: 'row',
@@ -350,9 +404,14 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  readTime: {
+  metaStack: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  likeCount: {
     ...typography.caption,
     color: colors.textMuted,
+    fontWeight: '600',
   },
 
   // ── Title ──
@@ -441,6 +500,69 @@ const styles = StyleSheet.create({
   sourceUrl: {
     ...typography.bodySmall,
     color: colors.primary,
+  },
+
+  // ── Recommended ──
+  recommendedSection: {
+    marginTop: spacing.md,
+  },
+  recommendedHeading: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  recommendedList: {
+    paddingRight: spacing.sm,
+    gap: spacing.md,
+  },
+  recommendedCard: {
+    width: Math.min(SCREEN_W * 0.72, 280),
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  recommendedImage: {
+    width: '100%',
+    height: 120,
+    backgroundColor: colors.surfaceMuted,
+  },
+  recommendedPlaceholder: {
+    width: '100%',
+    height: 120,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recommendedPlaceholderIcon: {
+    fontSize: 28,
+    opacity: 0.4,
+  },
+  recommendedMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+  },
+  recommendedCategory: {
+    ...typography.caption,
+    color: colors.primary,
+    flex: 1,
+    textTransform: 'uppercase',
+  },
+  recommendedDate: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  recommendedTitle: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+    fontWeight: '700',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.md,
   },
 
   // ── Bottom bar ──

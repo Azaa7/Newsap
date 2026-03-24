@@ -38,7 +38,10 @@ async function doAutoImport() {
     // Шинэ мэдээ байвал notification
     if (result.imported > 0) {
       try {
-        await notificationService.notifyNewArticles(result.imported);
+        await notificationService.notifyNewArticles(
+          result.imported,
+          result.firstImportedTitle || null
+        );
       } catch (notifErr) {
         console.warn('[AUTO-IMPORT] notification error:', notifErr);
       }

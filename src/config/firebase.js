@@ -1,6 +1,8 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuth, getReactNativePersistence, initializeAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyC3F8uHbXvUHrTFrG4eY0P9emoQPp73_ag',
@@ -13,5 +15,19 @@ const firebaseConfig = {
 };
 
 export const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
-export const firebaseAuth = getAuth(firebaseApp);
+
+// In React Native, calling `getAuth()` without specifying persistence falls back to
+// in-memory storage and prints a warning. `initializeAuth` with AsyncStorage fixes that.
+export const firebaseAuth = (() => {
+  try {
+    return initializeAuth(firebaseApp, {
+      persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+    });
+  } catch (error) {
+    // If Auth was already initialized (e.g., Fast Refresh), reuse the existing instance.
+    return getAuth(firebaseApp);
+  }
+})();
+
 export const firestoreDb = getFirestore(firebaseApp);
+export const firebaseStorage = getStorage(firebaseApp);

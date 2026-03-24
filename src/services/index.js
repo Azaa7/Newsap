@@ -5,3 +5,5 @@ export { offlineQueueService } from './offlineQueueService';
 export { newsApiService } from './newsApiService';
 export { notificationService } from './notificationService';
 export { autoImportService } from './autoImportService';
+export { profileService } from './profileService';
+export { realtimeService } from './realtimeService';

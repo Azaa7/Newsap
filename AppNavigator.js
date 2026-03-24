@@ -9,10 +9,10 @@ import {
   ArticleDetailScreen,
   AdminScreen,
   InterestsScreen,
+  SavedScreen,
 } from './src/pages';
 import { authService } from './src/services';
-import { notificationService } from './src/services';
-import { autoImportService } from './src/services';
+import { realtimeService } from './src/services/realtimeService';
 import { colors, spacing, typography } from './src/theme/tokens';
 
 const RootStack = createNativeStackNavigator();
@@ -47,34 +47,23 @@ export default function AppNavigator() {
       }
       setIsBooting(false);
 
-      // Push notification бүртгэх
-      if (restored?.user?.id) {
-        notificationService.registerForPushNotifications(restored.user.id);
-      }
-
-      // Автомат мэдээ импорт эхлүүлэх (foreground + background)
-      autoImportService.startAutoImport();
+      // Бүх realtime сервисүүдийг нэг дуудлагаар эхлүүлэх
+      realtimeService.start(restored?.user?.id, {
+        onNotificationReceived: (notification) => {
+          console.log('Notification received:', notification.request.content.title);
+        },
+        onNotificationTapped: (data) => {
+          console.log('Notification tapped:', data);
+        },
+      });
     };
 
     bootstrap();
+
+    return () => {
+      realtimeService.stop();
+    };
   }, []);
-
-  // Notification listener-үүд
-  useEffect(() => {
-    if (!session?.user?.id) return;
-
-    const cleanup = notificationService.addNotificationListeners({
-      onNotificationReceived: (notification) => {
-        console.log('Notification received:', notification.request.content.title);
-      },
-      onNotificationTapped: (data) => {
-        console.log('Notification tapped:', data);
-        // Цаашид: data.type === 'new_articles' бол тухайн ангилал руу navigate хийх
-      },
-    });
-
-    return cleanup;
-  }, [session?.user?.id]);
 
   const handleAuthSuccess = (nextSession) => {
     setSession(nextSession);
@@ -109,6 +98,19 @@ export default function AppNavigator() {
         user: {
           ...prev.user,
           language: nextLanguage,
+        },
+      };
+    });
+  };
+
+  const handleUserUpdate = (patch = {}) => {
+    setSession((prev) => {
+      if (!prev?.user) return prev;
+      return {
+        ...prev,
+        user: {
+          ...prev.user,
+          ...patch,
         },
       };
     });
@@ -159,10 +161,22 @@ export default function AppNavigator() {
                   language={language}
                   onLanguageChange={handleLanguageChange}
                   onLogout={handleLogout}
+                  onUserUpdate={handleUserUpdate}
                   onNewsapPress={() => props.navigation.navigate('Home')}
-                  onProfilePress={() => props.navigation.navigate('Profile')}
+                  onProfilePress={() => props.navigation.navigate('Home')}
+                  onSavedPress={() => props.navigation.navigate('Saved')}
                   onAdminPress={() => props.navigation.navigate('Admin')}
                   onEditInterests={() => props.navigation.navigate('EditInterests')}
+                />
+              )}
+            </RootStack.Screen>
+            <RootStack.Screen name="Saved">
+              {(props) => (
+                <SavedScreen
+                  user={session.user}
+                  language={language}
+                  onBackPress={() => props.navigation.goBack()}
+                  onOpenArticle={(article) => props.navigation.navigate('ArticleDetail', { article })}
                 />
               )}
             </RootStack.Screen>
@@ -176,7 +190,7 @@ export default function AppNavigator() {
               )}
             </RootStack.Screen>
             <RootStack.Screen name="ArticleDetail">
-              {(props) => <ArticleDetailScreen {...props} language={language} />}
+              {(props) => <ArticleDetailScreen {...props} language={language} user={session.user} />}
             </RootStack.Screen>
             <RootStack.Screen name="EditInterests">
               {(props) => (
