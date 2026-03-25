@@ -42,3 +42,5 @@ yarn-error.*
 
 # local installers/binaries
 assets/*.exe
+assets/*.msi
+assets/*.pdf
