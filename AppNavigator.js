@@ -46,24 +46,31 @@ export default function AppNavigator() {
         setLanguage(restored.user.language);
       }
       setIsBooting(false);
-
-      // Бүх realtime сервисүүдийг нэг дуудлагаар эхлүүлэх
-      realtimeService.start(restored?.user?.id, {
-        onNotificationReceived: (notification) => {
-          console.log('Notification received:', notification.request.content.title);
-        },
-        onNotificationTapped: (data) => {
-          console.log('Notification tapped:', data);
-        },
-      });
     };
 
     bootstrap();
+  }, []);
+
+  useEffect(() => {
+    if (isBooting) {
+      return;
+    }
+
+    // Session солигдох бүрд realtime-ийг зөв userId-тай restart хийнэ.
+    realtimeService.stop();
+    realtimeService.start(session?.user?.id, {
+      onNotificationReceived: (notification) => {
+        console.log('Notification received:', notification.request.content.title);
+      },
+      onNotificationTapped: (data) => {
+        console.log('Notification tapped:', data);
+      },
+    });
 
     return () => {
       realtimeService.stop();
     };
-  }, []);
+  }, [session?.user?.id, isBooting]);
 
   const handleAuthSuccess = (nextSession) => {
     setSession(nextSession);
